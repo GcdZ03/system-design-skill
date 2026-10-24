@@ -1,0 +1,155 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: <repo>/evals/runs/2026-10-24-codex-v2/theater
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 01a16b90-7c4e-7532-a5c5-d500b63a458b
+--------
+user
+I volunteer for a community theater with a 300-seat venue. We want our own online ticketing instead of paying a third-party site: people pick specific seats on a seating map, pay by card, and get a ticket with a QR code that's scanned at the door. Popular shows sell out within an hour of going on sale. Can you design the system?
+codex
+I’ll use the designing-new-systems skill to work through seat reservations, payments, and entry scanning, including what happens when many people try to buy the same seats.
+exec
+/bin/zsh -lc "pwd && rg --files -g 'AGENTS.md' -g 'SKILL.md' -g '"'!node_modules'"' -g '"'!vendor'"' . <repo>/evals/runs/2026-10-24-codex-v2/theater/.agents <repo>/evals/runs/2026-10-24-codex-v2/theater/.codex" in <repo>/evals/runs/2026-10-24-codex-v2/theater
+ exited 2 in 0ms:
+<repo>/evals/runs/2026-10-24-codex-v2/theater
+rg: <repo>/evals/runs/2026-10-24-codex-v2/theater/.codex: No such file or directory (os error 2)
+<repo>/evals/runs/2026-10-24-codex-v2/theater/.agents/skills/designing-new-systems/SKILL.md
+
+exec
+/bin/zsh -lc 'cat <repo>/evals/runs/2026-10-24-codex-v2/theater/.agents/skills/designing-new-systems/SKILL.md' in <repo>/evals/runs/2026-10-24-codex-v2/theater
+ succeeded in 0ms:
+---
+name: designing-new-systems
+description: Use when asked to design, architect, or plan a new system, service, or app backend before code exists, including "design X for me", "how should I structure this", or choosing databases, queues, caches, or hosting for a new project.
+---
+
+# Designing New Systems
+
+Good designs come from confirmed requirements and real numbers, not from a list of components. Get the requirements confirmed, put numbers on the load, and pick the smallest design that meets them. Then say exactly what would make it need to change.
+
+**Not for:** changes inside an existing codebase whose architecture is settled, or visual/UI design.
+
+## Step 1: Ask before you design
+
+Propose architecture, components, or a data model only after the user has answered your questions or accepted your defaults.
+
+Send one message with **at most 10 questions**, each with your proposed default in brackets. Only ask a question if a different answer would change the architecture, the data model, or the cost. These almost always qualify:
+
+- Scale: users who are active at the same time, and the main actions per day
+- Which is worse for this system: downtime or losing data
+- Monthly budget, and who builds and runs it
+
+Add the questions this particular system turns on, such as fan-out, file sizes, ordering, or compliance. List everything else you're assuming under **Assumptions** at the end of the message.
+
+End with: *"Reply with changes, or 'defaults' to accept all."* Leave out questions the request already answers.
+
+If the user says to skip questions, list your defaults as **Assumptions** at the top of the design and continue.
+
+| Thought | Reality |
+|---|---|
+| "The request is clear enough" | Scale and loss tolerance are almost never in the request |
+| "I'll list open questions at the end" | Their answers change the design, so ask before designing |
+| "I'll just assume a small scale" | Assumptions the user never saw can't be corrected |
+
+## Step 2: Put numbers on it
+
+Show the arithmetic for each of these:
+
+- Average and peak rate of each main operation (reads and writes separately)
+- Fan-out, if one action is delivered to many users
+- Storage per year, per data type (estimate large media separately, since it usually dominates)
+- Monthly cost in dollars
+
+Shortcuts:
+- 1M per month ≈ 0.4/s
+- 1 day ≈ 86,400 s ≈ 100k s
+- Peak ≈ 2–10× average (use 10× for bursty load)
+
+Then **right-size**. One server with Postgres handles thousands of simple queries per second. If the load fits on that, the design starts there.
+
+## Step 3: Write the design in this shape
+
+Write the full design to `DESIGN.md` in the project root, or to the path the user names. If you can't write files, put the full design in your reply after the Step 4 message.
+
+The design opens with a **summary of at most 5 lines**: the architecture in one sentence, the monthly cost, the top risk, and the decisions to confirm.
+
+1. **Requirements and numbers.** What was confirmed, plus the arithmetic.
+2. **Architecture.** The smallest design that fits, with a diagram.
+3. **Data model.** Include the hot-path query and the index that serves it.
+4. **Key flows.** Hot path first. Anything not needed for the user's response moves to a background worker.
+5. **Data protection.**
+   - A table with columns: data type | cost to lose it | RPO | mechanism.
+   - An availability target in nines, and an RTO.
+   - Irreplaceable data needs continuous backup (point-in-time recovery), not nightly backups.
+6. **Decisions.**
+   - A table with columns: choice | alternative | why | hard to reverse?
+   - Mark a decision hard to reverse only if changing it later needs a data migration or breaks people outside your code. Typical examples are ID schemes, URL formats, public API or payload shapes, caching and redirect semantics, and retention promises.
+   - Config values (timeouts, limits, intervals) are never hard to reverse.
+7. **Failure walk.** Cover each of these:
+   - A crash in the middle of an operation
+   - Retries and double-submits
+   - An external dependency that's down or slow
+   - Single points of failure, including non-code ones: domain expiry, TLS certificates, DNS, a scheduled job that silently stops
+8. **Not building yet.** Each item with the **numeric trigger** that would justify adding it.
+9. **Open risks.**
+
+Prefer tables over prose. Keep each section short.
+
+## Step 4: Hand off
+
+Your chat reply contains only these parts, in this order:
+
+1. The 5-line summary
+2. Where the full design is saved
+3. The **3–5 most consequential** hard-to-reverse decisions, each with one line on what it would cost to change later
+4. Any other hard-to-reverse decisions, as a one-line list
+5. A request to confirm them all in one reply, or to say what to change, before any code is written
+
+## Common mistakes
+
+| Mistake | Fix |
+|---|---|
+| "A few thousand a day at most" with no math | Show the arithmetic |
+| Nightly backups for data called irreplaceable | Set RPO by data type |
+| "Revisit later" or "add when needed" | Give a number: "add a queue at more than 500 jobs/s" |
+| Questions asked after the design | Step 1 |
+| 15+ questions, so the user accepts defaults without reading them | At most 10. The rest go under Assumptions |
+| Full design pasted into chat | Chat gets the Step 4 message. The design goes in `DESIGN.md` |
+
+For a deeper review, walk through `references/checklist.md`.
+
+codex
+Before designing, I need a few choices that affect cost and reliability. The [design skill](<repo>/evals/runs/2026-10-24-codex-v2/theater/.agents/skills/designing-new-systems/SKILL.md) requires: “Propose architecture, components, or a data model only after the user has answered your questions or accepted your defaults.”
+
+1. How many performances per year, and how many buyers might arrive together when sales open? **[100 performances/year; 500 simultaneous buyers; one performance goes on sale at a time.]**
+2. What is your monthly operating budget, and who will build and maintain it? **[A$150/month, excluding card fees; a volunteer developer builds it and provides occasional maintenance.]**
+3. Is a brief sales outage preferable to risking lost bookings, and how quickly must service recover? **[Never knowingly lose a confirmed booking; recovery within one hour.]**
+4. Can door scanners depend on internet access? **[2–4 phones, venue Wi-Fi with a mobile hotspot backup; temporary outages must still allow admission.]**
+5. Do you need box-office sales, complimentary tickets, refunds, or exchanges? **[Yes to all; online and box-office sales use the same seat inventory.]**
+6. What booking rules do you want? **[Guest checkout, eight-minute seat holds, six seats per order, organizer-controlled accessible seating, no customer resale.]**
+7. Where do you operate, and in which currency? **[Australia; AUD.]**
+
+**Assumptions:** One venue with 300 numbered seats; tickets belong to a specific performance; email delivery; one QR code per seat; ordinary entry is single-use with staff-controlled re-entry.
+
+Reply with changes, or 'defaults' to accept all.
+tokens used
+5,961
+Before designing, I need a few choices that affect cost and reliability. The [design skill](<repo>/evals/runs/2026-10-24-codex-v2/theater/.agents/skills/designing-new-systems/SKILL.md) requires: “Propose architecture, components, or a data model only after the user has answered your questions or accepted your defaults.”
+
+1. How many performances per year, and how many buyers might arrive together when sales open? **[100 performances/year; 500 simultaneous buyers; one performance goes on sale at a time.]**
+2. What is your monthly operating budget, and who will build and maintain it? **[A$150/month, excluding card fees; a volunteer developer builds it and provides occasional maintenance.]**
+3. Is a brief sales outage preferable to risking lost bookings, and how quickly must service recover? **[Never knowingly lose a confirmed booking; recovery within one hour.]**
+4. Can door scanners depend on internet access? **[2–4 phones, venue Wi-Fi with a mobile hotspot backup; temporary outages must still allow admission.]**
+5. Do you need box-office sales, complimentary tickets, refunds, or exchanges? **[Yes to all; online and box-office sales use the same seat inventory.]**
+6. What booking rules do you want? **[Guest checkout, eight-minute seat holds, six seats per order, organizer-controlled accessible seating, no customer resale.]**
+7. Where do you operate, and in which currency? **[Australia; AUD.]**
+
+**Assumptions:** One venue with 300 numbered seats; tickets belong to a specific performance; email delivery; one QR code per seat; ordinary entry is single-use with staff-controlled re-entry.
+
+Reply with changes, or 'defaults' to accept all.
