@@ -27,3 +27,4 @@ Each scenario goes to a fresh agent once **without** the skill (baseline) and on
 - [2026-10-24 draft 3, design to file](draft3-2026-10-24.md): 12/12, chat reply down from ~3,000 to ~340 words
 - [2026-10-24 Codex, draft 3](codex-2026-10-24.md): 6/6, skill triggered implicitly
 - [2026-10-24 Codex 0.164 retest](codex-v2-2026-10-24.md): 6/6, design doc twice as long
+- [2026-10-24 Codex 0.164 baseline, no skill](codex-baseline-2026-10-24.md): ~0.5/6 on the same model

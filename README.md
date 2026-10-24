@@ -45,16 +45,17 @@ Scored on a 6-point rubric (see [`evals/`](evals/)):
 | Habit tracker, webhooks, photo sharing (draft 1) | 1 / 18 | 18 / 18 |
 | Theater ticketing, greenhouse sensors, unseen while writing (draft 3) | ~2.5 / 12 (baseline from draft 2 run) | 12 / 12 |
 
-**On OpenAI Codex** (theater scenario, draft 3), tested on two versions:
+**On OpenAI Codex** (theater scenario, draft 3):
 
-| Version | Score | `DESIGN.md` | Chat hand-off |
-|---|---|---|---|
-| CLI v0.155.1 (`gpt-6-astra`) | **6 / 6** | 3,209 words | 154 words |
-| CLI v0.164.0 (`gpt-6.1-sol`) | **6 / 6** | 6,348 words | 181 words |
+| Run | Score | Output |
+|---|---|---|
+| CLI v0.164.0 (`gpt-6.1-sol`), **no skill** | **~0.5 / 6** | 1,167-word chat answer, no questions asked |
+| CLI v0.164.0 (`gpt-6.1-sol`), with skill | **6 / 6** | 7 questions, then a 6,348-word `DESIGN.md` and a 181-word hand-off |
+| CLI v0.155.1 (`gpt-6-astra`), with skill | **6 / 6** | 7 questions, then a 3,209-word `DESIGN.md` and a 154-word hand-off |
 
-- In both versions, Codex picked up the skill on its own from the description, asked 7 questions, and wrote a 9-section `DESIGN.md`.
-- No Codex run without the skill was done, so this shows the skill works on Codex, not how much it improves it.
-- Details: [v0.155.1](evals/codex-2026-10-24.md), [v0.164.0](evals/codex-v2-2026-10-24.md).
+- With the skill installed, Codex picked it up on its own from the description in both versions.
+- Without it, the same model's design was solid on correctness (seat locking, payment races, idempotent webhooks), but it skipped the same process steps the Claude baselines did.
+- Details: [baseline](evals/codex-baseline-2026-10-24.md), [v0.164.0](evals/codex-v2-2026-10-24.md), [v0.155.1](evals/codex-2026-10-24.md).
 
 **Limits:**
 - n = 1 per scenario.
